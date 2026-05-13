@@ -18,6 +18,7 @@ export function AdminPage() {
   const [feedback, setFeedback] = useState({ message: '', tone: 'success' });
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const fileInputRef = useRef(null);
 
   const showFeedback = (tone, message) => {
@@ -152,7 +153,11 @@ export function AdminPage() {
     }
 
     try {
-      await requestJson(`${API}/links/${id}`, { method: 'DELETE' });
+      await requestJson(`${API}/links/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
       showFeedback('success', '链接已删除。');
       await loadLinks();
     } catch {
@@ -218,6 +223,44 @@ export function AdminPage() {
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === links.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(links.map((link) => link.id));
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) {
+      showFeedback('danger', '请先选择要删除的链接');
+      return;
+    }
+
+    if (!window.confirm(`确定删除选中的 ${selectedIds.length} 条链接吗？`)) {
+      return;
+    }
+
+    try {
+      const result = await requestJson(`${API}/links/batch`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, ids: selectedIds }),
+      });
+      showFeedback('success', `已删除 ${result.deletedCount} 条链接`);
+      setSelectedIds([]);
+      await loadLinks();
+    } catch {
+      showFeedback('danger', '批量删除失败，请稍后重试');
     }
   };
 
@@ -347,6 +390,11 @@ export function AdminPage() {
                   style={{ display: 'none' }}
                 />
               </label>
+              {selectedIds.length > 0 && (
+                <button type="button" className="danger-button" onClick={handleBatchDelete}>
+                  删除选中 ({selectedIds.length})
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -360,27 +408,50 @@ export function AdminPage() {
           {isLoading ? (
             <LoadingCards />
           ) : links.length > 0 ? (
-            <div className="links-list">
-              {links.map((link) => (
-                <article key={link.id} className="list-item">
-                  <div className="list-item__copy">
-                    <strong>{link.title}</strong>
-                    <span>{link.url}</span>
-                  </div>
-                  <div className="list-item__meta">
-                    <em>复制 {link.clicks}</em>
-                    <div className="list-actions">
-                      <button type="button" className="secondary-button" onClick={() => handleEdit(link)}>
-                        编辑
-                      </button>
-                      <button type="button" className="danger-button" onClick={() => handleDelete(link.id)}>
-                        删除
-                      </button>
+            <>
+              <div className="list-header">
+                <label className="select-all">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length === links.length}
+                    onChange={handleSelectAll}
+                  />
+                  全选
+                </label>
+                {selectedIds.length > 0 && (
+                  <span className="selection-count">已选 {selectedIds.length} 条</span>
+                )}
+              </div>
+              <div className="links-list">
+                {links.map((link) => (
+                  <article key={link.id} className="list-item">
+                    <input
+                      type="checkbox"
+                      className="item-checkbox"
+                      checked={selectedIds.includes(link.id)}
+                      onChange={() => handleSelectOne(link.id)}
+                    />
+                    <div className="list-item__content">
+                      <div className="list-item__copy">
+                        <strong>{link.title}</strong>
+                        <span>{link.url}</span>
+                      </div>
+                      <div className="list-item__meta">
+                        <em>复制 {link.clicks}</em>
+                        <div className="list-actions">
+                          <button type="button" className="secondary-button" onClick={() => handleEdit(link)}>
+                            编辑
+                          </button>
+                          <button type="button" className="danger-button" onClick={() => handleDelete(link.id)}>
+                            删除
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            </>
           ) : (
             <StatusCard
               title="列表为空"

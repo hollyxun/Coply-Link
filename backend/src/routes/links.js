@@ -179,6 +179,31 @@ linksRouter.put('/:id', (req, res) => {
   res.json(linksRepo.update(req.params.id, title, url, description));
 });
 
+// 管理员批量删除链接（必须放在 /:id 之前，避免被参数路由拦截）
+linksRouter.delete('/batch', (req, res) => {
+  const { password, ids } = req.body;
+
+  if (password !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: '需要管理员密码' });
+  }
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ success: false, error: '缺少要删除的链接ID列表' });
+  }
+
+  let deletedCount = 0;
+  for (const id of ids) {
+    try {
+      linksRepo.delete(id);
+      deletedCount++;
+    } catch {
+      // 单条删除失败时继续执行
+    }
+  }
+
+  res.json({ success: true, deletedCount, requestedCount: ids.length });
+});
+
 // 管理员删除链接
 linksRouter.delete('/:id', (req, res) => {
   const { password } = req.body;

@@ -13,7 +13,6 @@ export function ViewPage() {
     const [myLinks, setMyLinks] = useState([]);
     const [copiedIds, setCopiedIds] = useState(getCopiedIds());
     const [copiedId, setCopiedId] = useState(null);
-    const [copiedTitle, setCopiedTitle] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [showSubmitForm, setShowSubmitForm] = useState(false);
@@ -26,6 +25,7 @@ export function ViewPage() {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitFeedback, setSubmitFeedback] = useState({message: '', tone: 'success'});
+    const [copyFeedback, setCopyFeedback] = useState({message: '', tone: 'success'});
     const [fingerprint, setFingerprint] = useState(null);
 
     const totalClicks = useMemo(
@@ -127,6 +127,7 @@ export function ViewPage() {
     const handleCopy = async (link) => {
         const success = await copyToClipboard(link.url);
         if (!success) {
+            setCopyFeedback({tone: 'danger', message: '复制失败，请手动复制'});
             prompt('自动复制失败，请手动复制：', link.url);
             return;
         }
@@ -142,16 +143,15 @@ export function ViewPage() {
         addCopiedId(link.id);
         setCopiedIds(getCopiedIds());
 
+        // 设置按钮的"已复制"状态
         setCopiedId(link.id);
-        setCopiedTitle(link.title);
+        window.setTimeout(() => setCopiedId(null), 900);
+
+        // 显示 toast
+        setCopyFeedback({tone: 'success', message: `已复制「${link.title}」`});
 
         // 跳转到对应的APP
         jumpToApp(link.url);
-
-        window.setTimeout(() => {
-            setCopiedId(null);
-            setCopiedTitle('');
-        }, 900);
     };
 
     const handleEditMyLink = (link) => {
@@ -255,7 +255,8 @@ export function ViewPage() {
                 </div>
             </HeroSection>
 
-            {copiedTitle && <div className="copy-toast">已复制「{copiedTitle}」</div>}
+            <Toast message={copyFeedback.message} tone={copyFeedback.tone}
+                   onClose={() => setCopyFeedback({message: '', tone: 'success'})}/>
             <Toast message={submitFeedback.message} tone={submitFeedback.tone}
                    onClose={() => setSubmitFeedback({message: '', tone: 'success'})}/>
 
