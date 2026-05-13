@@ -1,14 +1,12 @@
 import { formatTime } from '../utils/helpers';
 
 export function LinkCard({ link, copied, onCopy, isCopied }) {
-  // 三种状态：未复制、刚复制(临时copied)、已复制过(持久isCopied)
-  const buttonClass = copied
-    ? 'primary-button is-copied' // 刚复制：绿色高亮
-    : isCopied
-      ? 'secondary-button is-done' // 已复制过：灰色次要样式
-      : 'primary-button'; // 未复制：蓝色
+  // 三种状态：未复制、已复制（包括临时和持久）
+  const buttonClass = copied || isCopied
+    ? 'primary-button is-copied' // 已复制：绿色
+    : 'primary-button'; // 未复制：蓝色
 
-  const buttonText = copied ? '已复制' : isCopied ? '已复制过' : '复制链接';
+  const buttonText = copied || isCopied ? '已复制' : '复制链接';
 
   return (
     <article className="link-card glass-panel">

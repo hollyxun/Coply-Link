@@ -389,12 +389,6 @@
   border: 1px solid rgba(255, 255, 255, 0.24);
 }
 
-.secondary-button.is-done {
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-
 .danger-button {
   color: var(--danger);
   background: rgba(255, 107, 107, 0.12);
