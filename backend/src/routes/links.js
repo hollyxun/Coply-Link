@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DAILY_LIMIT, linksRepo, submissionRepo } from '../db.js';
+import { linksRepo, submissionRepo, usersRepo } from '../db.js';
 import { getClientIp, getTodayDate } from '../utils/helpers.js';
 import { isSafeUrl } from '../middleware/xssSanitizer.js';
 
@@ -32,40 +32,28 @@ linksRouter.post('/submission-count', (req, res) => {
     return res.status(400).json({ error: '缺少指纹标识' });
   }
 
-  const today = getTodayDate();
-  const count = submissionRepo.getCount(fingerprint, ip, today);
-  const remaining = DAILY_LIMIT - count;
-
   res.json({
-    count,
-    limit: DAILY_LIMIT,
-    remaining,
+    count: 0,
+    limit: 9999,
+    remaining: 9999,
   });
 });
 
-// 公共提交链接（fingerprint + IP 组合限制）
+// 公共提交链接（每个用户仅限一条，新的替换旧的）
 linksRouter.post('/public', (req, res) => {
-  const { fingerprint, title, url, description } = req.body;
-  const ip = getClientIp(req);
+  const { title, url, description, username } = req.body;
 
-  if (!fingerprint) {
-    return res.status(400).json({ success: false, error: '缺少指纹标识' });
+  if (!username) {
+    return res.status(401).json({ success: false, error: '请先登录' });
   }
 
   if (!url || !isSafeUrl(url)) {
     return res.status(400).json({ success: false, error: 'URL 格式不正确或包含不安全协议' });
   }
 
-  const today = getTodayDate();
-  const count = submissionRepo.getCount(fingerprint, ip, today);
-
-  if (count >= DAILY_LIMIT) {
-    return res.status(429).json({
-      success: false,
-      error: '今日提交次数已达上限',
-      count,
-      limit: DAILY_LIMIT,
-    });
+  const user = usersRepo.findByUsername(username);
+  if (!user) {
+    return res.status(401).json({ success: false, error: '用户不存在' });
   }
 
   const link = linksRepo.create(title, url, description, fingerprint, ip);

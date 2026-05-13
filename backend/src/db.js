@@ -49,6 +49,26 @@ export const linksRepo = {
     statements.links.incrementClicks.run(id);
     return statements.links.getClicks.get(id);
   },
+  findByUserId: (userId) => statements.links.findByUserId.get(userId),
+  upsertByUser: (userId, title, url, description = '') => {
+    const existing = statements.links.findByUserId.get(userId);
+    if (existing) {
+      statements.links.updateByUser.run(title, url, description, userId);
+      return { id: existing.id, title, url, description, clicks: existing.clicks, user_id: userId };
+    } else {
+      const result = statements.links.insertWithUser.run(title, url, description, userId);
+      return { id: result.lastInsertRowid, title, url, description, clicks: 0, user_id: userId };
+    }
+  }
+};
+
+// Users Repository
+export const usersRepo = {
+  findByUsername: (username) => statements.users.findByUsername.get(username),
+  create: (username, password) => {
+    const result = statements.users.insert.run(username, password);
+    return { id: result.lastInsertRowid, username };
+  }
 };
 
 // Submission Repository (fingerprint + IP 组合计数)
@@ -89,13 +109,28 @@ export function initTables() {
       count INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(fingerprint, ip, date)
-    )
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  // 确保 links 表包含 user_id 字段（适配旧数据库）
+  try {
+    db.exec('ALTER TABLE links ADD COLUMN user_id INTEGER');
+  } catch (e) {
+    // 如果字段已存在，忽略错误
+  }
+
 
   // 表创建后再编译语句
   statements = {
     links: {
-      findAll: db.prepare('SELECT * FROM links ORDER BY created_at DESC'),
+      findAll: db.prepare('SELECT * FROM links ORDER BY RANDOM()'),
       findById: db.prepare('SELECT * FROM links WHERE id = ?'),
       findByOwner: db.prepare('SELECT * FROM links WHERE fingerprint = ? AND ip = ?'),
       insert: db.prepare('INSERT INTO links (title, url, description, fingerprint, ip) VALUES (?, ?, ?, ?, ?)'),
@@ -106,12 +141,19 @@ export function initTables() {
       deleteAll: db.prepare('DELETE FROM links'),
       incrementClicks: db.prepare('UPDATE links SET clicks = clicks + 1 WHERE id = ?'),
       getClicks: db.prepare('SELECT clicks FROM links WHERE id = ?'),
+      findByUserId: db.prepare('SELECT * FROM links WHERE user_id = ?'),
+      updateByUser: db.prepare('UPDATE links SET title = ?, url = ?, description = ? WHERE user_id = ?'),
+      insertWithUser: db.prepare('INSERT INTO links (title, url, description, user_id) VALUES (?, ?, ?, ?)'),
     },
     submission: {
       getCount: db.prepare('SELECT count FROM submission_limits WHERE fingerprint = ? AND ip = ? AND date = ?'),
       incrementCount: db.prepare('UPDATE submission_limits SET count = count + 1 WHERE fingerprint = ? AND ip = ? AND date = ?'),
       insert: db.prepare('INSERT INTO submission_limits (fingerprint, ip, date, count) VALUES (?, ?, ?, 1)'),
       deleteAll: db.prepare('DELETE FROM submission_limits'),
+    },
+    users: {
+      findByUsername: db.prepare('SELECT * FROM users WHERE username = ?'),
+      insert: db.prepare('INSERT INTO users (username, password) VALUES (?, ?)'),
     },
   };
 }

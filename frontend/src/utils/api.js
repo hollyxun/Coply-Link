@@ -99,3 +99,62 @@ export function buildEditForm(link) {
     description: link.description || '',
   };
 }
+
+export function jumpToApp(text) {
+  if (!text) return;
+
+  // 尝试从文本中提取真正的 HTTP/HTTPS 链接（防止带有“点击打开”等其他文字内容）
+  const urlMatch = text.match(/https?:\/\/[^\s]+/i);
+  const cleanUrl = urlMatch ? urlMatch[0] : text;
+
+  let schemeUrl = '';
+
+  if (!/^https?:\/\//i.test(cleanUrl)) {
+    schemeUrl = cleanUrl;
+  } else {
+    const lowerUrl = cleanUrl.toLowerCase();
+    if (lowerUrl.includes('taobao.com') || lowerUrl.includes('tb.cn') || lowerUrl.includes('tmall.com')) {
+      schemeUrl = cleanUrl.replace(/^https?:\/\//i, 'taobao://');
+    }
+  }
+
+  if (!schemeUrl) return;
+
+  console.log('[App Jump] Target Scheme URL:', schemeUrl);
+
+  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+  const isAndroid = /android/i.test(userAgent);
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+
+  if (isAndroid) {
+    // Android 高版本兼容方案：使用 intent:// 协议
+    const match = schemeUrl.match(/^([a-zA-Z0-9-]+):\/\/(.*)$/);
+    if (match) {
+      const scheme = match[1];
+      const path = match[2];
+      let intentUrl = `intent://${path}#Intent;scheme=${scheme};`;
+      if (scheme === 'taobao') {
+        intentUrl += 'package=com.taobao.taobao;';
+      }
+      // 不添加 fallback_url，保证在没装 APP 时能够静默处理而不覆盖当前 H5 页面报错
+      intentUrl += 'end;';
+      window.location.href = intentUrl;
+    } else {
+      window.location.href = schemeUrl;
+    }
+  } else if (isIOS) {
+    // iOS Safari 推荐直接 href 跳转，未安装 APP 仅会系统弹窗提示，不会覆盖当前路由
+    window.location.href = schemeUrl;
+  } else {
+    // 其他平台使用 iframe 保底方案
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = schemeUrl;
+    document.body.appendChild(iframe);
+    setTimeout(() => {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 1000);
+  }
+}
