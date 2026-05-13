@@ -22,6 +22,7 @@ let statements = null;
 // Links Repository
 export const linksRepo = {
   findAll: () => statements.links.findAll.all(),
+  findAllTitles: () => statements.links.findAllTitles.all().map(row => row.title),
   findById: (id) => statements.links.findById.get(id),
   findByOwner: (fingerprint, ip) => statements.links.findByOwner.all(fingerprint, ip),
   create: (title, url, description, fingerprint, ip) => {
@@ -96,6 +97,7 @@ export function initTables() {
   statements = {
     links: {
       findAll: db.prepare('SELECT * FROM links ORDER BY created_at DESC'),
+      findAllTitles: db.prepare('SELECT title FROM links'),
       findById: db.prepare('SELECT * FROM links WHERE id = ?'),
       findByOwner: db.prepare('SELECT * FROM links WHERE fingerprint = ? AND ip = ?'),
       insert: db.prepare('INSERT INTO links (title, url, description, fingerprint, ip) VALUES (?, ?, ?, ?, ?)'),

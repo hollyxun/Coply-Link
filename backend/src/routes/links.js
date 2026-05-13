@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { DAILY_LIMIT, linksRepo, submissionRepo } from '../db.js';
-import { getClientIp, getTodayDate } from '../utils/helpers.js';
+import { getClientIp, getTodayDate, checkTitleSimilarity } from '../utils/helpers.js';
 import { isSafeUrl } from '../middleware/xssSanitizer.js';
 
 export const linksRouter = Router();
@@ -52,8 +52,22 @@ linksRouter.post('/public', (req, res) => {
     return res.status(400).json({ success: false, error: '缺少指纹标识' });
   }
 
+  if (!title) {
+    return res.status(400).json({ success: false, error: '标题不能为空' });
+  }
+
   if (!url || !isSafeUrl(url)) {
     return res.status(400).json({ success: false, error: 'URL 格式不正确或包含不安全协议' });
+  }
+
+  // 检查标题相似度
+  const existingTitles = linksRepo.findAllTitles();
+  const similarityCheck = checkTitleSimilarity(title, existingTitles, 7);
+  if (similarityCheck.similar) {
+    return res.status(400).json({
+      success: false,
+      error: `标题与已有链接「${similarityCheck.similarTitle}」过于相似（${similarityCheck.similarity.toFixed(1)}%）`,
+    });
   }
 
   const today = getTodayDate();

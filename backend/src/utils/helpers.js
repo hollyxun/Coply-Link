@@ -83,3 +83,68 @@ export function normalizeIp(ip) {
 export function getTodayDate() {
   return new Date().toISOString().split('T')[0];
 }
+
+/**
+ * 计算两个字符串的相似度 (Levenshtein距离)
+ * 返回相似度百分比 (0-100)
+ */
+export function calculateSimilarity(str1, str2) {
+  if (!str1 || !str2) return 0;
+  if (str1 === str2) return 100;
+
+  const s1 = str1.toLowerCase().trim();
+  const s2 = str2.toLowerCase().trim();
+
+  const len1 = s1.length;
+  const len2 = s2.length;
+
+  if (len1 === 0 || len2 === 0) return 0;
+
+  // Levenshtein距离算法
+  const matrix = [];
+
+  for (let i = 0; i <= len2; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= len1; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= len2; i++) {
+    for (let j = 1; j <= len1; j++) {
+      if (s2[i - 1] === s1[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  const distance = matrix[len2][len1];
+  const maxLen = Math.max(len1, len2);
+  const similarity = ((maxLen - distance) / maxLen) * 100;
+
+  return similarity;
+}
+
+/**
+ * 检查标题是否与已有标题过于相似
+ * @param title 新标题
+ * @param existingTitles 已有标题列表
+ * @param threshold 相似度阈值（百分比）
+ * @returns { similar: boolean, similarTitle: string|null, similarity: number }
+ */
+export function checkTitleSimilarity(title, existingTitles, threshold = 7) {
+  for (const existing of existingTitles) {
+    const similarity = calculateSimilarity(title, existing);
+    if (similarity >= threshold) {
+      return { similar: true, similarTitle: existing, similarity };
+    }
+  }
+  return { similar: false, similarTitle: null, similarity: 0 };
+}
