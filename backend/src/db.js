@@ -117,3 +117,16 @@ export function initTables() {
     },
   };
 }
+
+/**
+ * 清空所有数据（links + submission_limits）
+ */
+export function clearAllData() {
+  try {
+    linksRepo.deleteAll();
+    submissionRepo.deleteAll();
+    return { success: true, message: '链接数据和提交限制已成功清空' };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
