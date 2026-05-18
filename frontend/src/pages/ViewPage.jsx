@@ -189,16 +189,17 @@ export function ViewPage() {
         setIsSubmitting(true);
 
         try {
+            let success = false;
+
             if (editingLink) {
-                // 修改自己的链接
                 await requestJson(`${API}/links/public/${editingLink.id}`, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({fingerprint, ...submitForm}),
                 });
                 setSubmitFeedback({tone: 'success', message: '链接已更新'});
+                success = true;
             } else {
-                // 新提交
                 const data = await requestJson(`${API}/links/public`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -212,15 +213,18 @@ export function ViewPage() {
                         count: prev.count + 1,
                         remaining: data.remaining,
                     }));
+                    success = true;
                 } else {
                     setSubmitFeedback({tone: 'danger', message: data.error || '提交失败'});
                 }
             }
 
-            setSubmitForm({title: '', url: '', description: ''});
-            setShowSubmitForm(false);
-            setEditingLink(null);
-            await loadLinks();
+            if (success) {
+                setSubmitForm({title: '', url: '', description: ''});
+                setShowSubmitForm(false);
+                setEditingLink(null);
+                await loadLinks();
+            }
         } catch (err) {
             let errorMsg = '操作失败，请稍后重试';
             if (err.message?.includes('429')) {
@@ -270,21 +274,23 @@ export function ViewPage() {
                     <div className="links-list">
                         {myLinks.map((link) => (
                             <article key={link.id} className="list-item">
-                                <div className="list-item__copy">
-                                    <strong>{link.title}</strong>
-                                    <span>{link.url}</span>
-                                </div>
-                                <div className="list-item__meta">
-                                    <em>复制 {link.clicks}</em>
-                                    <div className="list-actions">
-                                        <button type="button" className="secondary-button"
-                                                onClick={() => handleEditMyLink(link)}>
-                                            编辑
-                                        </button>
-                                        <button type="button" className="danger-button"
-                                                onClick={() => handleDeleteMyLink(link.id)}>
-                                            删除
-                                        </button>
+                                <div className="list-item__content">
+                                    <div className="list-item__copy">
+                                        <strong>{link.title}</strong>
+                                        <span>{link.url}</span>
+                                    </div>
+                                    <div className="list-item__meta">
+                                        <em>复制 {link.clicks}</em>
+                                        <div className="list-actions">
+                                            <button type="button" className="secondary-button"
+                                                    onClick={() => handleEditMyLink(link)}>
+                                                编辑
+                                            </button>
+                                            <button type="button" className="danger-button"
+                                                    onClick={() => handleDeleteMyLink(link.id)}>
+                                                删除
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </article>

@@ -126,7 +126,7 @@ export function AdminPage() {
         await requestJson(`${API}/links/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, password }),
         });
         showFeedback('success', '链接已更新。');
       } else {
@@ -424,7 +424,7 @@ export function AdminPage() {
               </div>
               <div className="links-list">
                 {links.map((link) => (
-                  <article key={link.id} className="list-item">
+                  <article key={link.id} className="list-item list-item--with-checkbox">
                     <input
                       type="checkbox"
                       className="item-checkbox"

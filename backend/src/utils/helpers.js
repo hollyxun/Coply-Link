@@ -85,6 +85,17 @@ export function getTodayDate() {
 }
 
 /**
+ * 获取北京时间的 ISO 格式字符串 (YYYY-MM-DD HH:mm:ss)
+ */
+export function getBeijingTime() {
+  const now = new Date();
+  // 北京时间 = UTC + 8小时
+  const beijingOffset = 8 * 60 * 60 * 1000;
+  const beijingTime = new Date(now.getTime() + beijingOffset);
+  return beijingTime.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/**
  * 计算两个字符串的相似度 (Levenshtein距离)
  * 返回相似度百分比 (0-100)
  */

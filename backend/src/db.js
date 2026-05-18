@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { getBeijingTime } from './utils/helpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,8 +27,9 @@ export const linksRepo = {
   findById: (id) => statements.links.findById.get(id),
   findByOwner: (fingerprint, ip) => statements.links.findByOwner.all(fingerprint, ip),
   create: (title, url, description, fingerprint, ip) => {
-    const result = statements.links.insert.run(title, url, description, fingerprint, ip);
-    return { id: result.lastInsertRowid, title, url, description, fingerprint, ip, clicks: 0 };
+    const createdAt = getBeijingTime();
+    const result = statements.links.insert.run(title, url, description, fingerprint, ip, createdAt);
+    return { id: result.lastInsertRowid, title, url, description, fingerprint, ip, clicks: 0, created_at: createdAt };
   },
   update: (id, title, url, description) => {
     statements.links.update.run(title, url, description, id);
@@ -100,7 +102,7 @@ export function initTables() {
       findAllTitles: db.prepare('SELECT title FROM links'),
       findById: db.prepare('SELECT * FROM links WHERE id = ?'),
       findByOwner: db.prepare('SELECT * FROM links WHERE fingerprint = ? AND ip = ?'),
-      insert: db.prepare('INSERT INTO links (title, url, description, fingerprint, ip) VALUES (?, ?, ?, ?, ?)'),
+      insert: db.prepare('INSERT INTO links (title, url, description, fingerprint, ip, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
       update: db.prepare('UPDATE links SET title = ?, url = ?, description = ? WHERE id = ?'),
       updateByOwner: db.prepare('UPDATE links SET title = ?, url = ?, description = ? WHERE id = ? AND fingerprint = ? AND ip = ?'),
       deleteByOwner: db.prepare('DELETE FROM links WHERE id = ? AND fingerprint = ? AND ip = ?'),
