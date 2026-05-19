@@ -110,7 +110,7 @@ linksRouter.post('/public', (req, res) => {
 
   // 检查标题相似度
   const existingTitles = linksRepo.findAllTitles();
-  const similarityCheck = checkTitleSimilarity(title, existingTitles, 7);
+  const similarityCheck = checkTitleSimilarity(title, existingTitles, 70);
   if (similarityCheck.similar) {
     return res.status(400).json({
       success: false,

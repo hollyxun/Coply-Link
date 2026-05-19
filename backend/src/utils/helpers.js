@@ -1,3 +1,25 @@
+import jieba from '@node-rs/jieba';
+const { Jieba } = jieba;
+
+// 单例 Jieba 实例，避免重复创建
+const jiebaInstance = new Jieba();
+
+/**
+ * 分词函数 - 使用 jieba 中文分词
+ * 使用 HMM 模式获得更好的分词效果
+ */
+function tokenize(text) {
+  if (!text) return [];
+
+  // jieba 中文分词（HMM 模式，精确分词）
+  const tokens = jiebaInstance.cut(text, true);
+
+  // 过滤空白，转小写
+  return tokens
+    .map(token => token.trim().toLowerCase())
+    .filter(token => token.length > 0);
+}
+
 /**
  * 获取客户端真实IP，兼容IPv4、IPv6、代理等情况
  */
@@ -96,66 +118,59 @@ export function getBeijingTime() {
 }
 
 /**
- * 计算两个字符串的相似度 (Levenshtein距离)
- * 返回相似度百分比 (0-100)
+ * 计算 Dice 相似度系数（词汇集合重叠率）
+ * 更适合短文本（标题）的相似度计算
+ * Dice = 2 * |A ∩ B| / (|A| + |B|)
  */
-export function calculateSimilarity(str1, str2) {
-  if (!str1 || !str2) return 0;
-  if (str1 === str2) return 100;
+function diceSimilarity(tokens1, tokens2) {
+  if (tokens1.length === 0 || tokens2.length === 0) return 0;
 
-  const s1 = str1.toLowerCase().trim();
-  const s2 = str2.toLowerCase().trim();
+  const set1 = new Set(tokens1);
+  const set2 = new Set(tokens2);
 
-  const len1 = s1.length;
-  const len2 = s2.length;
+  // 计算交集大小
+  const intersection = [...set1].filter(token => set2.has(token)).length;
 
-  if (len1 === 0 || len2 === 0) return 0;
+  // Dice 系数
+  const dice = (2 * intersection) / (set1.size + set2.size);
 
-  // Levenshtein距离算法
-  const matrix = [];
-
-  for (let i = 0; i <= len2; i++) {
-    matrix[i] = [i];
-  }
-
-  for (let j = 0; j <= len1; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= len2; i++) {
-    for (let j = 1; j <= len1; j++) {
-      if (s2[i - 1] === s1[j - 1]) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-
-  const distance = matrix[len2][len1];
-  const maxLen = Math.max(len1, len2);
-  const similarity = ((maxLen - distance) / maxLen) * 100;
-
-  return similarity;
+  return Math.round(dice * 100);
 }
 
 /**
  * 检查标题是否与已有标题过于相似
+ * 使用 jieba 分词 + Dice 系数计算词汇重叠率
  * @param title 新标题
  * @param existingTitles 已有标题列表
  * @param threshold 相似度阈值（百分比）
  * @returns { similar: boolean, similarTitle: string|null, similarity: number }
  */
-export function checkTitleSimilarity(title, existingTitles, threshold = 7) {
+export function checkTitleSimilarity(title, existingTitles, threshold = 70) {
+  if (!title || existingTitles.length === 0) {
+    return { similar: false, similarTitle: null, similarity: 0 };
+  }
+
+  // 完全相同直接返回
+  if (existingTitles.includes(title)) {
+    return { similar: true, similarTitle: title, similarity: 100 };
+  }
+
+  // 分词：新标题
+  const newTokens = tokenize(title);
+  if (newTokens.length === 0) {
+    return { similar: false, similarTitle: null, similarity: 0 };
+  }
+
+  // 遍历已有标题计算相似度
   for (const existing of existingTitles) {
-    const similarity = calculateSimilarity(title, existing);
+    const existingTokens = tokenize(existing);
+    if (existingTokens.length === 0) continue;
+
+    const similarity = diceSimilarity(newTokens, existingTokens);
     if (similarity >= threshold) {
       return { similar: true, similarTitle: existing, similarity };
     }
   }
+
   return { similar: false, similarTitle: null, similarity: 0 };
 }
